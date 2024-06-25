@@ -2,6 +2,7 @@
 """ Console Module """
 import cmd
 import sys
+import re
 from models.base_model import BaseModel
 from models.__init__ import storage
 from models.user import User
@@ -29,6 +30,7 @@ class HBNBCommand(cmd.Cmd):
              'max_guest': int, 'price_by_night': int,
              'latitude': float, 'longitude': float
             }
+
     def do_greet(self, arg):
         print(f"Hello {arg}")
 
@@ -75,7 +77,7 @@ class HBNBCommand(cmd.Cmd):
                 pline = pline[2].strip()  # pline is now str
                 if pline:
                     # check for *args or **kwargs
-                    if pline[0] == '{' and pline[-1] =='}'\
+                    if pline[0] == '{' and pline[-1] == '}'\
                             and type(eval(pline)) == dict:
                         _args = pline
                     else:
@@ -116,17 +118,54 @@ class HBNBCommand(cmd.Cmd):
         pass
 
     def do_create(self, args):
-        """ Create an object of any class"""
+        """Create an object of any class"""
         if not args:
-            print("** class name missing **")
+            # Check if no arguments are provided
+            print("*** class name missing ***")
             return
-        elif args not in HBNBCommand.classes:
-            print("** class doesn't exist **")
+        args_split = args.split(' ', 1)
+        # Split arguments into class name and parameters
+        class_name = args_split[0]
+        # Extract class name
+        params = args_split[1] if len(args_split) > 1 else ''
+        if class_name not in HBNBCommand.classes:
+            print("*** class doesn't exist ***")
             return
-        new_instance = HBNBCommand.classes[args]()
-        storage.save()
-        print(new_instance.id)
-        storage.save()
+        new_instance = HBNBCommand.classes[class_name]()
+        for param in params.split(' '):
+            key, value = self.parse_param(param)
+            if key is not None and value is not None:
+                setattr(new_instance, key, value)
+                storage.save()
+                print(new_instance.id)
+                storage.save()
+
+    def parse_param(self, param):
+        """Parse a parameter and return the key and value."""
+        if '=' not in param:
+            return None, None
+        key, value = param.split('=', 1)
+        key = key.strip()
+        value = value.replace('_', ' ')
+        if re.match(r'^".*"$', value):
+            value = value[1:-1]
+            value = value.replace('\\"', '"')
+            value = value.replace('\\\'', '\'')
+            return key, value
+        elif '.' in value:
+            try:
+                value = float(value)
+                return key, value
+            except ValueError:
+                return None, None
+        elif value.isdigit():
+            try:
+                value = int(value)
+                return key, value
+            except ValueError:
+                return None, None
+            else:
+                return None, None
 
     def help_create(self):
         """ Help information for the create method """
@@ -189,7 +228,7 @@ class HBNBCommand(cmd.Cmd):
         key = c_name + "." + c_id
 
         try:
-            del(storage.all()[key])
+            del (storage.all()[key])
             storage.save()
         except KeyError:
             print("** no instance found **")
@@ -321,6 +360,7 @@ class HBNBCommand(cmd.Cmd):
         """ Help information for the update class """
         print("Updates an object with new information")
         print("Usage: update <className> <id> <attName> <attVal>\n")
+
 
 if __name__ == "__main__":
     HBNBCommand().cmdloop()
