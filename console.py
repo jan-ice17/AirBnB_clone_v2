@@ -117,55 +117,63 @@ class HBNBCommand(cmd.Cmd):
         """ Overrides the emptyline method of CMD """
         pass
 
-    def do_create(self, args):
-        """Create an object of any class"""
-        if not args:
-            # Check if no arguments are provided
-            print("*** class name missing ***")
-            return
-        args_split = args.split(' ', 1)
-        # Split arguments into class name and parameters
-        class_name = args_split[0]
-        # Extract class name
-        params = args_split[1] if len(args_split) > 1 else ''
-        if class_name not in HBNBCommand.classes:
-            print("*** class doesn't exist ***")
-            return
-        new_instance = HBNBCommand.classes[class_name]()
-        for param in params.split(' '):
-            key, value = self.parse_param(param)
-            if key is not None and value is not None:
-                setattr(new_instance, key, value)
-                storage.save()
-                print(new_instance.id)
-                storage.save()
 
-    def parse_param(self, param):
-        """Parse a parameter and return the key and value."""
-        if '=' not in param:
+def do_create(self, create_args):
+    """ Create an object of any class"""
+    if not create_args:
+        print("** class name missing **")
+        return
+    # Split args into class name and the rest
+    split_create_args = create_args.split(' ', 1)
+    class_type = split_create_args[0]
+    additional_params = (
+        split_create_args[1]
+        if len(split_create_args) > 1 else '')
+    # Check if class exists
+    if class_type not in HBNBCommand.classes:
+        print("** class doesn't exist **")
+        return
+    # Make new instance of the class
+    new_object = HBNBCommand.classes[class_type]()
+    # Add attributes from params
+    for param_string in additional_params.split():
+        attribute_name, attribute_value = self.parse_param(param_string)
+        if attribute_name is not None and attribute_value is not None:
+            setattr(new_object, attribute_name, attribute_value)
+    storage.save()
+    print(new_object.id)
+    storage.save()
+
+
+def parse_param(self, param_string):
+    """Parse a parameter and return the key and value."""
+    if '=' not in param_string:
+        return None, None
+    # Split param into key and value
+    attribute_name, attribute_value = param_string.split('=', 1)
+    # If it's a string
+    if re.match(r'^".*"$', attribute_value):
+        attribute_value = attribute_value[1: -1]
+        attribute_value = attribute_value.replace('\\"', '"')
+        attribute_value = attribute_value.replace('_', ' ')
+        return attribute_name, attribute_value
+    # If it's a float
+    elif re.match(r'^-?\d+\.\d+$', attribute_value):
+        try:
+            attribute_value = float(attribute_value)
+            return attribute_name, attribute_value
+        except ValueError:
             return None, None
-        key, value = param.split('=', 1)
-        key = key.strip()
-        value = value.replace('_', ' ')
-        if re.match(r'^".*"$', value):
-            value = value[1:-1]
-            value = value.replace('\\"', '"')
-            value = value.replace('\\\'', '\'')
-            return key, value
-        elif '.' in value:
-            try:
-                value = float(value)
-                return key, value
-            except ValueError:
-                return None, None
-        elif value.isdigit():
-            try:
-                value = int(value)
-                return key, value
-            except ValueError:
-                return None, None
-            else:
-                return None, None
+    # If it's an int
+    elif attribute_value.isdigit() or (attribute_value.startswith('-')
+                                       and attribute_value[1:].isdigit()):
+        try:
+            attribute_value = int(attribute_value)
+            return attribute_name, attribute_value
+        except ValueError:
+            return None, None
+    else:
+        return None, None
 
     def help_create(self):
         """ Help information for the create method """
