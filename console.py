@@ -2,6 +2,7 @@
 """ Console Module """
 import cmd
 import sys
+import re
 from models.base_model import BaseModel
 from models.__init__ import storage
 from models.user import User
@@ -19,16 +20,16 @@ class HBNBCommand(cmd.Cmd):
     prompt = '(hbnb) ' if sys.__stdin__.isatty() else ''
 
     classes = {
-        'BaseModel': BaseModel, 'User': User, 'Place': Place,
-        'State': State, 'City': City, 'Amenity': Amenity,
-        'Review': Review
-    }
+               'BaseModel': BaseModel, 'User': User, 'Place': Place,
+               'State': State, 'City': City, 'Amenity': Amenity,
+               'Review': Review
+              }
     dot_cmds = ['all', 'count', 'show', 'destroy', 'update']
     types = {
-        'number_rooms': int, 'number_bathrooms': int,
-        'max_guest': int, 'price_by_night': int,
-        'latitude': float, 'longitude': float
-    }
+             'number_rooms': int, 'number_bathrooms': int,
+             'max_guest': int, 'price_by_night': int,
+             'latitude': float, 'longitude': float
+            }
 
     def preloop(self):
         """Prints if isatty is false"""
@@ -43,7 +44,7 @@ class HBNBCommand(cmd.Cmd):
         """
         _cmd = _cls = _id = _args = ''  # initialize line elements
 
-        # scan for general formatting - i.e '.', '(', ')'
+        # scan for general formating - i.e '.', '(', ')'
         if not ('.' in line and '(' in line and ')' in line):
             return line
 
@@ -58,7 +59,7 @@ class HBNBCommand(cmd.Cmd):
             if _cmd not in HBNBCommand.dot_cmds:
                 raise Exception
 
-            # if parentheses contain arguments, parse them
+            # if parantheses contain arguments, parse them
             pline = pline[pline.find('(') + 1:pline.find(')')]
             if pline:
                 # partition args: (<id>, [<delim>], [<*args>])
@@ -78,9 +79,10 @@ class HBNBCommand(cmd.Cmd):
                         _args = pline
                     else:
                         _args = pline.replace(',', '')
+                        # _args = _args.replace('\"', '')
             line = ' '.join([_cmd, _cls, _id, _args])
 
-        except Exception:
+        except Exception as mess:
             pass
         finally:
             return line
@@ -112,43 +114,51 @@ class HBNBCommand(cmd.Cmd):
         """ Overrides the emptyline method of CMD """
         pass
 
-    def do_create(self, line):
-        """Creates a new instance of BaseModel, saves it
-        Exceptions:
-        SyntaxError: when there is no args given
-        NameError: when there is no object that has the name
-        """
-        try:
-            if not line:
-                raise SyntaxError()
-            cmd_parts = line.split(" ")  # split command line into list
-            if cmd_parts:  # if list not empty
-                class_name = cmd_parts[0]  # extract class name
-            else:  # class name missing
-                raise SyntaxError()
-
-            attribute_dict = {}
-
-            for attr_pair in cmd_parts[1:]:
-                key, value = attr_pair.split("=")
-                if self.is_int(value):
-                    attribute_dict[key] = int(value)
-                elif self.is_float(value):
-                    attribute_dict[key] = float(value)
-                else:
-                    value = value.replace('_', ' ')
-                    attribute_dict[key] = value.strip('"\'')
-
-            # Create the new object with given attributes
-            new_obj = self.classes[class_name](**attribute_dict)
-            storage.new(new_obj)  # store new object
-            new_obj.save()  # save storage to file
-            print(new_obj.id)  # print id of created object class
-
-        except SyntaxError:
+    def do_create(self, args):
+        """ Create an object of any class"""
+        if not args:
             print("** class name missing **")
-        except KeyError:
+            return
+        splitted_args = args.split(' ', 1)
+        class_name = splitted_args[0]
+        params = splitted_args[1] if len(splitted_args) > 1 else ''
+        if class_name not in HBNBCommand.classes:
             print("** class doesn't exist **")
+            return
+        new_instance = HBNBCommand.classes[class_name]()
+        for param in params.split():
+            key, value = self.parse_param(param)
+            if key is not None and value is not None:
+                setattr(new_instance, key, value)
+        storage.save()
+        print(new_instance.id)
+        storage.save()
+
+    def parse_param(self, param):
+        """Parse a parameter and return the key and value."""
+        if '=' not in param:
+            return None, None
+        key, value = param.split('=', 1)
+        if re.match(r'^".*"$', value):
+            value = value[1: -1]
+            value = value.replace('\\"', '"')
+            value = value.replace('_', ' ')
+            return key, value
+        elif re.match(r'^-?\d+\.\d+$', value):
+            try:
+                value = float(value)
+                return key, value
+            except ValueError:
+                return None, None
+        elif value.isdigit() or (value.startswith('-')
+                                 and value[1:].isdigit()):
+            try:
+                value = int(value)
+                return key, value
+            except ValueError:
+                return None, None
+        else:
+            return None, None
 
     def help_create(self):
         """ Help information for the create method """
@@ -211,7 +221,7 @@ class HBNBCommand(cmd.Cmd):
         key = c_name + "." + c_id
 
         try:
-            del (storage.all()[key])
+            del(storage.all()[key])
             storage.save()
         except KeyError:
             print("** no instance found **")
@@ -253,7 +263,7 @@ class HBNBCommand(cmd.Cmd):
         print(count)
 
     def help_count(self):
-        """ Help information for the count command """
+        """ """
         print("Usage: count <class_name>")
 
     def do_update(self, args):
@@ -340,7 +350,7 @@ class HBNBCommand(cmd.Cmd):
         new_dict.save()  # save updates to file
 
     def help_update(self):
-        """ Help information for the update command """
+        """ Help information for the update class """
         print("Updates an object with new information")
         print("Usage: update <className> <id> <attName> <attVal>\n")
 
