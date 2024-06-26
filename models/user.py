@@ -8,13 +8,20 @@ from sqlalchemy.orm import relationship
 
 
 class User(BaseModel, Base):
-    """Representation of a user """
+    """Representation of a user
+    Attributes:
+        email: email address
+        password: password
+        first_name: first name
+        last_name: last name
+        """
     if models.storage_type == 'db':
         __tablename__ = 'users'
         email = Column(String(128), nullable=False)
         password = Column(String(128), nullable=False)
         first_name = Column(String(128), nullable=True)
         last_name = Column(String(128), nullable=True)
+
         places = relationship("Place", backref="user")
         reviews = relationship("Review", backref="user")
     else:
