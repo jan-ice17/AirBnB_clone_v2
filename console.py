@@ -31,9 +31,6 @@ class HBNBCommand(cmd.Cmd):
              'latitude': float, 'longitude': float
             }
 
-    def do_greet(self, arg):
-        print(f"Hello {arg}")
-
     def preloop(self):
         """Prints if isatty is false"""
         if not sys.__stdin__.isatty():
@@ -78,7 +75,7 @@ class HBNBCommand(cmd.Cmd):
                 if pline:
                     # check for *args or **kwargs
                     if pline[0] == '{' and pline[-1] == '}'\
-                            and type(eval(pline)) == dict:
+                            and type(eval(pline)) is dict:
                         _args = pline
                     else:
                         _args = pline.replace(',', '')
@@ -118,54 +115,58 @@ class HBNBCommand(cmd.Cmd):
         pass
 
     def do_create(self, args):
-        """Create an object of any class"""
+        """ Create an object of any class"""
         if not args:
-            # Check if no arguments are provided
-            print("*** class name missing ***")
+            print("** class name missing **")
             return
-        args_split = args.split(' ', 1)
-        # Split arguments into class name and parameters
-        class_name = args_split[0]
-        # Extract class name
-        params = args_split[1] if len(args_split) > 1 else ''
+        # Split args into class name and extra params
+        split_args = args.split(' ', 1)
+        class_name = split_args[0]
+        params = split_args[1] if len(split_args) > 1 else ''
+        # Check if class exists
         if class_name not in HBNBCommand.classes:
-            print("*** class doesn't exist ***")
+            print("** class doesn't exist **")
             return
+        # Make new instance of class
         new_instance = HBNBCommand.classes[class_name]()
-        for param in params.split(' '):
-            key, value = self.parse_param(param)
-            if key is not None and value is not None:
-                setattr(new_instance, key, value)
+        # Added att from params
+        for param_str in params.split():
+            attr_name, attr_value = self.parse_param(param_str)
+            if attr_name is not None and attr_value is not None:
+                setattr(new_instance, attr_name, attr_value)
                 storage.save()
                 print(new_instance.id)
                 storage.save()
 
-    def parse_param(self, param):
-        """Parse a parameter and return the key and value."""
-        if '=' not in param:
-            return None, None
-        key, value = param.split('=', 1)
-        key = key.strip()
-        value = value.replace('_', ' ')
-        if re.match(r'^".*"$', value):
-            value = value[1:-1]
-            value = value.replace('\\"', '"')
-            value = value.replace('\\\'', '\'')
-            return key, value
-        elif '.' in value:
-            try:
-                value = float(value)
-                return key, value
-            except ValueError:
+        def parse_param(self, param_str):
+            """Parse a parameter and return the key and value."""
+            if '=' not in param_str:
                 return None, None
-        elif value.isdigit():
-            try:
-                value = int(value)
-                return key, value
-            except ValueError:
-                return None, None
-            else:
-                return None, None
+            # Split param into key and value
+            attr_name, attr_value = param_str.split('=', 1)
+            # If it's a string
+            if re.match(r'^".*"$', attr_value):
+                attr_value = attr_value[1:-1]
+                attr_value = attr_value.replace('\\"', '"')
+                attr_value = attr_value.replace('_', ' ')
+                return attr_name, attr_value
+            # If it's a float
+            elif re.match(r'^-?\d+\.\d+$', attr_value):
+                try:
+                    attr_value = float(attr_value)
+                    return attr_name, attr_value
+                except ValueError:
+                    return None, None
+                # If it's an int
+            elif attr_value.isdigit() or (attr_value.startswith('-')
+                                          and attr_value[1:].isdigit()):
+                try:
+                    attr_value = int(attr_value)
+                    return attr_name, attr_value
+                except ValueError:
+                    return None, None
+                else:
+                    return None, None
 
     def help_create(self):
         """ Help information for the create method """
@@ -305,7 +306,7 @@ class HBNBCommand(cmd.Cmd):
             return
 
         # first determine if kwargs or args
-        if '{' in args[2] and '}' in args[2] and type(eval(args[2])) == dict:
+        if '{' in args[2] and '}' in args[2] and type(eval(args[2])) is dict:
             kwargs = eval(args[2])
             args = []  # reformat kwargs into list, ex: [<name>, <value>, ...]
             for k, v in kwargs.items():
