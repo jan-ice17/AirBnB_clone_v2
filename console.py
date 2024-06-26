@@ -31,9 +31,6 @@ class HBNBCommand(cmd.Cmd):
              'latitude': float, 'longitude': float
             }
 
-    def do_greet(self, arg):
-        print(f"Hello {arg}")
-
     def preloop(self):
         """Prints if isatty is false"""
         if not sys.__stdin__.isatty():
@@ -78,7 +75,7 @@ class HBNBCommand(cmd.Cmd):
                 if pline:
                     # check for *args or **kwargs
                     if pline[0] == '{' and pline[-1] == '}'\
-                            and type(eval(pline)) == dict:
+                            and type(eval(pline)) is dict:
                         _args = pline
                     else:
                         _args = pline.replace(',', '')
@@ -117,63 +114,59 @@ class HBNBCommand(cmd.Cmd):
         """ Overrides the emptyline method of CMD """
         pass
 
+    def do_create(self, args):
+        """ Create an object of any class"""
+        if not args:
+            print("** class name missing **")
+            return
+        # Split args into class name and extra params
+        split_args = args.split(' ', 1)
+        class_name = split_args[0]
+        params = split_args[1] if len(split_args) > 1 else ''
+        # Check if class exists
+        if class_name not in HBNBCommand.classes:
+            print("** class doesn't exist **")
+            return
+        # Make new instance of class
+        new_instance = HBNBCommand.classes[class_name]()
+        # Added att from params
+        for param_str in params.split():
+            attr_name, attr_value = self.parse_param(param_str)
+            if attr_name is not None and attr_value is not None:
+                setattr(new_instance, attr_name, attr_value)
+                storage.save()
+                print(new_instance.id)
+                storage.save()
 
-def do_create(self, create_args):
-    """ Create an object of any class"""
-    if not create_args:
-        print("** class name missing **")
-        return
-    # Split args into class name and the rest
-    split_create_args = create_args.split(' ', 1)
-    class_type = split_create_args[0]
-    additional_params = (
-        split_create_args[1]
-        if len(split_create_args) > 1 else '')
-    # Check if class exists
-    if class_type not in HBNBCommand.classes:
-        print("** class doesn't exist **")
-        return
-    # Make new instance of the class
-    new_object = HBNBCommand.classes[class_type]()
-    # Add attributes from params
-    for param_string in additional_params.split():
-        attribute_name, attribute_value = self.parse_param(param_string)
-        if attribute_name is not None and attribute_value is not None:
-            setattr(new_object, attribute_name, attribute_value)
-    storage.save()
-    print(new_object.id)
-    storage.save()
-
-
-def parse_param(self, param_string):
-    """Parse a parameter and return the key and value."""
-    if '=' not in param_string:
-        return None, None
-    # Split param into key and value
-    attribute_name, attribute_value = param_string.split('=', 1)
-    # If it's a string
-    if re.match(r'^".*"$', attribute_value):
-        attribute_value = attribute_value[1: -1]
-        attribute_value = attribute_value.replace('\\"', '"')
-        attribute_value = attribute_value.replace('_', ' ')
-        return attribute_name, attribute_value
-    # If it's a float
-    elif re.match(r'^-?\d+\.\d+$', attribute_value):
-        try:
-            attribute_value = float(attribute_value)
-            return attribute_name, attribute_value
-        except ValueError:
-            return None, None
-    # If it's an int
-    elif attribute_value.isdigit() or (attribute_value.startswith('-')
-                                       and attribute_value[1:].isdigit()):
-        try:
-            attribute_value = int(attribute_value)
-            return attribute_name, attribute_value
-        except ValueError:
-            return None, None
-    else:
-        return None, None
+        def parse_param(self, param_str):
+            """Parse a parameter and return the key and value."""
+            if '=' not in param_str:
+                return None, None
+            # Split param into key and value
+            attr_name, attr_value = param_str.split('=', 1)
+            # If it's a string
+            if re.match(r'^".*"$', attr_value):
+                attr_value = attr_value[1:-1]
+                attr_value = attr_value.replace('\\"', '"')
+                attr_value = attr_value.replace('_', ' ')
+                return attr_name, attr_value
+            # If it's a float
+            elif re.match(r'^-?\d+\.\d+$', attr_value):
+                try:
+                    attr_value = float(attr_value)
+                    return attr_name, attr_value
+                except ValueError:
+                    return None, None
+                # If it's an int
+            elif attr_value.isdigit() or (attr_value.startswith('-')
+                                          and attr_value[1:].isdigit()):
+                try:
+                    attr_value = int(attr_value)
+                    return attr_name, attr_value
+                except ValueError:
+                    return None, None
+                else:
+                    return None, None
 
     def help_create(self):
         """ Help information for the create method """
@@ -313,7 +306,7 @@ def parse_param(self, param_string):
             return
 
         # first determine if kwargs or args
-        if '{' in args[2] and '}' in args[2] and type(eval(args[2])) == dict:
+        if '{' in args[2] and '}' in args[2] and type(eval(args[2])) is dict:
             kwargs = eval(args[2])
             args = []  # reformat kwargs into list, ex: [<name>, <value>, ...]
             for k, v in kwargs.items():
