@@ -1,17 +1,19 @@
 #!/usr/bin/env bash
-# web_static deployment setting up
-
-sudo apt-get update
-sudo apt-get upgrade
+# set up the NGINX config for web_static
+# install nginx
+sudo apt-get -y update
 sudo apt-get -y install nginx
-sudo mkdir -p /data/
-sudo mkdir -p /data/web_static/
-sudo mkdir -p /data/web_static/releases/
-sudo mkdir -p /data/web_static/shared/
-sudo mkdir -p /data/web_static/releases/test/
-sudo touch /data/web_static/releases/test/index.html
-echo "Hello World!" | sudo tee /data/web_static/releases/test/index.html
-sudo ln -sf /data/web_static/releases/test/ /data/web_static/current
-sudo chown -hR ubuntu:ubuntu /data/
-sudo sed -i '38i\\tlocation /hbnb_static/ {\n\t\talias /data/web_static/current/;\n\t}\n' /etc/nginx/sites-available/default
-sudo service nginx start
+# make file structure
+mkdir -p /data/web_static/releases/test/
+mkdir -p /data/web_static/shared/
+# add simple content
+echo "Testing my nginx configuration" >> /data/web_static/releases/test/index.html
+# symbolic link
+ln -fs /data/web_static/releases/test/ /data/web_static/current
+# give ownership to user and group
+chown -R ubuntu:ubuntu /data
+# Update the Nginx configuration to serve the content of
+# /data/web_static/current/ to hbnb_static 
+sed -i "/listen 80 default_server;/a location /hbnb_static {alias /data/web_static/current/;}" /etc/nginx/sites-available/default
+sudo ufw allow "Nginx HTTP"
+sudo service nginx restart
