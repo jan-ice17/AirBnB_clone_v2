@@ -1,10 +1,14 @@
 #!/usr/bin/python3
 
+"""
+A script that starts a Flask web application:
+and runs on port 5000
+"""
 from flask import Flask
 
 app = Flask(__name__)
 
-@app.route('/')
+@app.route('/', strict_slashes=False)
 def home():
     return('Hello HBNB!')
 
